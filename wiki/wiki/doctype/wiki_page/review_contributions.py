@@ -38,7 +38,7 @@ def fetch_patches(start=0, limit=10):
 	return patches
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_patches_api(start=0, limit=10):
 	patches = fetch_patches(start, limit)
 	return {"patches": patches}

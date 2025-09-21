@@ -687,9 +687,9 @@ def update(
 		if not draft:
 			printf("update: auto-approving patch", Colors.GREEN, bold=True)
 			patch.approved_by = frappe.session.user
-			patch.status = "Approved"
-			patch.submit()
-			out.approved = True
+			patch.status = "Under Review"
+			patch.save()
+			out.approved = False
 		else:
 			printf("update: patch saved as draft", Colors.YELLOW)
 
