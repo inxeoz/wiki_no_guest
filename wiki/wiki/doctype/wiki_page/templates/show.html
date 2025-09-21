@@ -1,0 +1,140 @@
+<div class="from-markdown markdown {% if edit_wiki_page or new_wiki_page %}hide{% endif %}">
+	<div class="alert alert-warning admin-banner {% if not (is_admin and pending_patches_count)%}hide{% endif %}"
+		role="alert">
+		<div class="d-flex justify-content-between align-items-center">
+			<div>This space has
+				<strong id="pending-patches-count">{{ pending_patches_count }}</strong> change(s) pending for
+				review.
+			</div>
+			<button class="btn btn-sm btn-warning review-changes-btn">Review changes</button>
+		</div>
+	</div>
+	<div class="d-flex justify-content-between align-items-center">
+		<h1 class="wiki-title">{{ title }}</h1>
+	</div>
+	<div class="wiki-content">
+		{{frappe.utils.md_to_html(content)}}
+	</div>
+	<input value={{ name }} class="d-none" name="wiki-page-name"></input>
+	{% include "wiki/doctype/wiki_page/templates/revisions.html" %}
+	{% include "wiki/doctype/wiki_page/templates/page_settings.html" %}
+</div>
+<div class="wiki-editor {% if not edit_wiki_page and not new_wiki_page %}hide{% endif %}">
+	{% include "wiki/doctype/wiki_page/templates/editor.html" %}
+</div>
+<div class="modal fade" id="addGroupModal" tabindex="-1" role="dialog" aria-labelledby="addGroupModal"
+	aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="addGroupModalTitle">Title</h5>
+			</div>
+			<div class="modal-body">
+				<span class="text-muted text-xs">Enter title for the new Wiki Group</span>
+				<input type="text" id="title" name="title">
+			</div>
+			<div class="modal-footer">
+				<button class="add-group-btn btn btn-primary btn-sm" type="button" data-dismiss="modal">Submit</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="flex my-4 wiki-page-meta d-print-none">
+	{%- if show_feedback -%}
+	<div class="flex">
+		<span class="text-sm d-none d-sm-block">Was this article helpful?</span>
+		<span class="text-sm ml-2 feedback-btn" data-toggle="modal" data-target="#feedbackModal">Give Feedback</span>
+	</div>
+	{% include "wiki/doctype/wiki_page/templates/feedback.html" %}
+	{%- endif -%}
+
+	{%- if last_revision -%}
+	<div class="user-contributions" data-date="{{ last_revision.modified }}">
+	</div>
+	{%- endif -%}
+	{%- if show_dropdown -%}
+	<div class="dropdown">
+		<div class="dropdown-toggle wiki-options menu" type="button" role="button" id="wikiOptionsButton"
+			data-toggle="dropdown" aria-label="Wiki Option Button" aria-expanded="false">
+			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+				stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+				class="feather feather-more-horizontal">
+				<circle cx="5" cy="12" r="1"></circle>
+				<circle cx="12" cy="12" r="1"></circle>
+				<circle cx="19" cy="12" r="1"></circle>
+			</svg>
+		</div>
+		<div class="dropdown-menu d-print-none" aria-labelledby="wikiOptionsButton">
+			<a class="dropdown-item edit-wiki-btn" href="#">Edit Page</a>
+			<a class="dropdown-item add-wiki-btn" href="#">New Page</a>
+			<a class="dropdown-item show-revisions" href="#" data-toggle="modal" data-target="#revisionsModal">
+				Revisions
+			</a>
+			<a class="dropdown-item show-page-settings" href="#" data-toggle="modal" data-target="#pageSettingsModal">
+				Page Settings
+			</a>
+		</div>
+	</div>
+	{%- endif -%}
+</div>
+<div class="wiki-footer d-print-none">
+	<div class="forward-back">
+		<a href="#" class="btn left footer-prev-page-link">
+			<p>Previous Page</p>
+			<p class="footer-prev-page">Left</p>
+		</a>
+		<a href="#" class="btn pull-right right footer-next-page-link">
+			<p>Next Page</p>
+			<p class="footer-next-page">Right</p>
+		</a>
+		</a>
+	</div>
+</div>
+
+<script type="text/javascript" src="/assets/frappe/js/lib/jquery/jquery.min.js"></script>
+<script>
+	/** // const patchNewCode = `<h1>{{ patch_new_title }}</h1>{{ patch_new_code }}`;
+	// const patchNewCode = {title: `{{patch_new_title}}`, content: `{{patch_new_code}}`} **/
+	const patchNewCode = `{{patch_new_title}},{{patch_new_code}}`
+	const wikiSearchScope = `{{ wiki_search_scope or "" }}`;
+</script>
+
+{{ include_script('wiki.bundle.js') }}
+
+<script>
+	var wikiPageName = `{{name}}`;
+	function getSidebarItems() {
+		let side = {};
+
+		let items = $($(".doc-sidebar .web-sidebar").get(0))
+			.children(".sidebar-items")
+			.children("ul")
+			.not(".hidden")
+			.children("li");
+
+		items.each(function (item) {
+			name = $(this).children(".collapsible").children("span.sidebar-group-title, span.text-sm").text();
+			side[name] = [];
+
+			$(this).children(".list-unstyled").children(".sidebar-item").each(function (item) {
+				side[name].push({
+					name: $(this).data('name'),
+					type: $(this).data('type'),
+					new: $(this).data('new'),
+					title: $(this).data('title'),
+					group_name: $(this).data('groupName'),
+				});
+			});
+		});
+
+		return side;
+	}
+
+	const render_wiki = new RenderWiki();
+	frappe.ready(() => render_wiki.setup_search(wikiSearchScope))
+</script>
+
+{%- if script -%}
+<script>{{ script }}</script>
+{%- endif -%}
