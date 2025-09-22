@@ -34,6 +34,9 @@
         <button class="btn btn-success" onclick="saveSelected()">Save</button>
       </div>
       <div class="col-auto">
+        <button class="btn btn-warning" onclick="redirectToRoute()">Redirect</button>
+      </div>
+      <div class="col-auto">
         <div id="status" class="muted">Status: idle</div>
       </div>
     </div>
@@ -59,29 +62,21 @@
 </div>
 
 <script>
-/* -------------------------
-   Minimal config (change if needed)
-   ------------------------- */
 const frappeBase = "http://127.0.0.1:8003";
 const spacesAPI = `${frappeBase}/api/resource/Wiki%20Space`;
 const pageListAPI = `${frappeBase}/api/method/wiki.wiki.doctype.wiki_space.wiki_space.page_list_of_space`;
+const wikiRouteAPI = `${frappeBase}/api/method/wiki.wiki.doctype.wiki_page.wiki_page.wiki_route`;
+
 const nodeRedSaveAPI = "http://127.0.0.1:1880/data";
 
-// Auth headers for Frappe API (adjust token if required)
 const authHeaders = {
   "Authorization": "token 1212:1212",
   "Content-Type": "application/json",
   "Cookie": "full_name=Guest; sid=Guest; system_user=no; user_id=Guest; user_lang=en"
 };
 
-/* -------------------------
-   State
-   ------------------------- */
 let currentPages = [];
 
-/* -------------------------
-   Helpers
-   ------------------------- */
 function setStatus(text, isError=false) {
   const s = document.getElementById('status');
   s.textContent = 'Status: ' + text;
@@ -89,9 +84,6 @@ function setStatus(text, isError=false) {
 }
 function escapeHtml(s){ if(s==null) return ''; return String(s).replace(/[&<>"'`]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[m])); }
 
-/* -------------------------
-   Load spaces on start
-   ------------------------- */
 async function loadSpaces(){
   const sel = document.getElementById('spaceSelect');
   sel.innerHTML = '<option>Loading...</option>';
@@ -99,7 +91,7 @@ async function loadSpaces(){
     const res = await fetch(spacesAPI, { headers: authHeaders });
     const json = await res.json();
     sel.innerHTML = '';
-    if (json.data && Array.isArray(json.data) && json.data.length) {
+    if (json.data && Array.isArray(json.data)) {
       json.data.forEach(sp => {
         const opt = document.createElement('option');
         opt.value = sp.name;
@@ -114,13 +106,9 @@ async function loadSpaces(){
   } catch (err) {
     sel.innerHTML = '<option>Error</option>';
     setStatus('error loading spaces', true);
-    console.error(err);
   }
 }
 
-/* -------------------------
-   Load pages for selected space
-   ------------------------- */
 async function loadPages(){
   const sel = document.getElementById('spaceSelect');
   const space = sel.value;
@@ -136,16 +124,15 @@ async function loadPages(){
       body: JSON.stringify({ wiki_space_id: space })
     });
     const json = await res.json();
-    if (!json.message || !Array.isArray(json.message) || json.message.length===0) {
+
+    if (!json.message || !Array.isArray(json.message)) {
       table.innerHTML = '<tr><td colspan="4" class="text-center muted py-4">No pages</td></tr>';
       currentPages = [];
       setStatus('no pages', true);
       return;
     }
 
-    // build currentPages with default edit=0
     currentPages = json.message.map(p => ({
-      name: p.name,
       wiki_page_id: p.wiki_page || p.name,
       route: p.route || '',
       edit: 0
@@ -155,21 +142,12 @@ async function loadPages(){
   } catch (err) {
     table.innerHTML = '<tr><td colspan="4" class="text-center muted py-4">Error loading</td></tr>';
     setStatus('error loading pages', true);
-    console.error(err);
   }
 }
 
-/* -------------------------
-   Render table with toggles
-   ------------------------- */
 function renderTable() {
   const table = document.getElementById('pagesTable');
   table.innerHTML = '';
-  if (!currentPages.length) {
-    table.innerHTML = '<tr><td colspan="4" class="text-center muted py-4">No pages loaded</td></tr>';
-    return;
-  }
-
   currentPages.forEach((p, idx) => {
     const tr = document.createElement('tr');
     const name = `edit-${idx}`;
@@ -180,70 +158,76 @@ function renderTable() {
       <td class="fw-semibold">${escapeHtml(p.wiki_page_id)}</td>
       <td class="text-muted">${escapeHtml(p.route)}</td>
       <td>
-        <div class="btn-group btn-group-sm" role="group">
-          <input type="radio" class="btn-check" name="${name}" id="${idV}" autocomplete="off" ${p.edit===0 ? 'checked' : ''}>
-          <label class="btn btn-outline-success btn-sm" for="${idV}">Visible</label>
-
-          <input type="radio" class="btn-check" name="${name}" id="${idE}" autocomplete="off" ${p.edit===1 ? 'checked' : ''}>
-          <label class="btn btn-outline-primary btn-sm" for="${idE}">Editable</label>
-
-          <input type="radio" class="btn-check" name="${name}" id="${idH}" autocomplete="off" ${p.edit===-1 ? 'checked' : ''}>
-          <label class="btn btn-outline-danger btn-sm" for="${idH}">Hidden</label>
+        <div class="btn-group btn-group-sm">
+          <input type="radio" class="btn-check" name="${name}" id="${idV}" ${p.edit===0?'checked':''}>
+          <label class="btn btn-outline-success" for="${idV}">Visible</label>
+          <input type="radio" class="btn-check" name="${name}" id="${idE}" ${p.edit===1?'checked':''}>
+          <label class="btn btn-outline-primary" for="${idE}">Editable</label>
+          <input type="radio" class="btn-check" name="${name}" id="${idH}" ${p.edit===-1?'checked':''}>
+          <label class="btn btn-outline-danger" for="${idH}">Hidden</label>
         </div>
       </td>
     `;
 
-    // open route on row click unless clicked on control
     tr.addEventListener('click', (ev) => {
-      if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'LABEL' || ev.target.closest('.btn-group')) return;
+      if (ev.target.closest('.btn-group')) return;
       if (p.route) {
-        const full = frappeBase.replace(/\/$/, '') + '/' + p.route.replace(/^\//, '');
+        const full = frappeBase.replace(/\/$/,'') + '/' + p.route.replace(/^\//,'');
         window.open(full, '_blank');
       }
     });
 
     table.appendChild(tr);
-
-    // attach listeners
-    document.getElementById(idV).addEventListener('change', () => currentPages[idx].edit = 0);
-    document.getElementById(idE).addEventListener('change', () => currentPages[idx].edit = 1);
-    document.getElementById(idH).addEventListener('change', () => currentPages[idx].edit = -1);
+    document.getElementById(idV).addEventListener('change',()=>currentPages[idx].edit=0);
+    document.getElementById(idE).addEventListener('change',()=>currentPages[idx].edit=1);
+    document.getElementById(idH).addEventListener('change',()=>currentPages[idx].edit=-1);
   });
 }
 
-/* -------------------------
-   Save to Node-RED
-   ------------------------- */
 async function saveSelected() {
   const token = document.getElementById('saveToken').value.trim();
   if (!token) { setStatus('enter token', true); return; }
-  if (!currentPages.length) { setStatus('no pages to save', true); return; }
-
+  if (!currentPages.length) { setStatus('no pages', true); return; }
   setStatus('saving...');
   const pages = currentPages.map(p => ({ wiki_page_id: p.wiki_page_id, edit: p.edit }));
-  const payload = { token, data: { pages } };
-
   try {
     const res = await fetch(nodeRedSaveAPI, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ token, data:{ pages } })
     });
     const json = await res.json();
-    if (json && json.status === 'ok') {
-      setStatus('saved');
-    } else {
-      setStatus('save failed', true);
-    }
+    setStatus(json.status==='ok'?'saved':'save failed', json.status!=='ok');
   } catch (err) {
-    console.error(err);
     setStatus('save error', true);
   }
 }
 
-/* -------------------------
-   Init
-   ------------------------- */
+async function redirectToRoute() {
+  const token = document.getElementById('saveToken').value.trim();
+  if (!token) { setStatus('enter token', true); return; }
+  if (!currentPages.length) { setStatus('no pages', true); return; }
+
+  const firstPage = currentPages[0]; // you can change logic (first, or selected)
+  try {
+    const res = await fetch(wikiRouteAPI, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ wiki_page_id: firstPage.wiki_page_id, token })
+    });
+    const json = await res.json();
+    if (json.message) {
+      const url = frappeBase.replace(/\/$/,'') + json.message;
+      window.open(url, '_blank');
+      setStatus('redirected');
+    } else {
+      setStatus('no route returned', true);
+    }
+  } catch (err) {
+    setStatus('redirect error', true);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', loadSpaces);
 </script>
 </body>

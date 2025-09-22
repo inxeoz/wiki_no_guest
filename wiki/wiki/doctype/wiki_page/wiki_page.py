@@ -274,8 +274,8 @@ class WikiPage(WebsiteGenerator):
         
         page_allowed_level , default_page_detail = is_page_in_allowed_list(self.name, page_list_arr)
         
-        if page_allowed_level != 1:
-            frappe.throw("you dont have access to this page")
+        if page_allowed_level == -1:
+            redirect_to_default_page_or_error(page_list_arr, token)
         
         
         printf(f"WikiPage.verify_permission: permission granted for page={self.name} (full access mode)", Colors.GREEN)
@@ -488,7 +488,7 @@ class WikiPage(WebsiteGenerator):
             
             page_allowed_level , default_page_detail = is_page_in_allowed_list(wiki_page.name, page_list_arr)
             
-            if page_allowed_level == 0 :
+            if page_allowed_level == -1 :
                 continue
             
             
@@ -1004,9 +1004,9 @@ def is_page_in_allowed_list(page_id:str, page_list_arr: list ):
         
         if page_id == page_detail["wiki_page_id"] :
             
-            
             print(f"EEEEEEEEEEEEEEEEEEE {page_detail} and page_id {page_id} {type ( page_detail["edit"] ) } <-------")
-            return (1, page_detail)
+            
+            return (page_detail["edit"], page_detail)
 
             # return 
     return (0,  page_list_arr[0])
@@ -1027,18 +1027,16 @@ def is_edit_allowed_for_page(wiki_page_name: str =  None, token:str = None) -> b
     page_exist_lvl, page_detail = is_page_in_allowed_list(wiki_page_name, page_list_arr)
     
     try:
-        return page_exist_lvl == 1 and page_detail["edit"] == 1
+        return page_exist_lvl == 1 
     except Exception as e:
         print(f"is_edit_allowed_for_page\n\n\n {e}")
         return False
 
 
 
-def redirect_to_page(wiki_page_id, token:str):
-    
-            page_route = frappe.db.get_value("Wiki Page", wiki_page_id, "route")
+def redirect_to_page(page_route):
             frappe.local.response["type"] = "redirect"
-            frappe.local.response["location"] = f"/{page_route}?token={token}"
+            frappe.local.response["location"] = page_route
             raise frappe.Redirect
 
 @frappe.whitelist(allow_guest=True)
@@ -1049,3 +1047,20 @@ def wiki_route(wiki_page_id, token:str):
         page_route  =  f"/{page_route}?token={token}"
         
     return page_route
+
+
+def redirect_to_default_page_or_error(page_list_arr, token:str):
+    
+    for page in page_list_arr:
+        
+        if page["edit"] == 0 or   page["edit"] == 1 :
+            page_route = wiki_route(page["wiki_page_id"], token)
+            redirect_to_page(page_route)
+            return
+    
+    frappe.msgprint("token doesnot have any link to visible page")
+    frappe.throw(_("token doesnot have any link to visible page"))
+        
+    
+    
+    
