@@ -656,7 +656,7 @@ def update(
     
     token=None,
 ):
-    printf(f"update: called with name={name}, title={title}, new={new}, draft={draft} (full access mode)", Colors.YELLOW, bold=True)
+    printf(f"update: called with name={name}, title={title}, new={new}, draft={draft} (full access mode) token={token}", Colors.YELLOW, bold=True)
     
     try:
         printf("update: starting update process (full access mode)", Colors.GREEN)
@@ -708,6 +708,8 @@ def update(
 
             patch.update(patch_dict)
             patch.save()
+            
+            patch = frappe.get_doc("Wiki Page Patch", patch.name)
             printf("update: new patch saved", Colors.GREEN)
 
             if file_ids:
@@ -730,15 +732,18 @@ def update(
         printf("update: database committed", Colors.GREEN)
         
         # Route logic
+            
         if draft:
             out.route = "drafts"
-            printf("update: routing to drafts", Colors.CYAN)
-        elif hasattr(patch, "new_wiki_page"):
+        elif hasattr(patch, "new_wiki_page") and patch.new_wiki_page:
             out.route = patch.new_wiki_page.route
-            printf(f"update: routing to new wiki page {out.route}", Colors.CYAN)
-        else:
+        elif hasattr(patch, "wiki_page_doc") and patch.wiki_page_doc:
             out.route = patch.wiki_page_doc.route
-            printf(f"update: routing to existing wiki page {out.route}", Colors.CYAN)
+        else:
+            
+            wiki_page_route  = frappe.get_value("Wiki Page", {"name" : name}, "route")
+            out.route = wiki_page_route  # fallback to original wiki name or another safe default
+            
 
         printf(f"update: returning result={out}", Colors.GREEN, bold=True)
         

@@ -84,6 +84,8 @@ function saveWikiPage(draft = false) {
   const content = editor.getValue();
   const urlParams = new URLSearchParams(window.location.search);
   const isEmptyEditor = !!urlParams.get("newWiki");
+  const token = urlParams.get("token");
+
   frappe.call({
     method: "wiki.wiki.doctype.wiki_page.wiki_page.update",
     args: {
@@ -96,6 +98,7 @@ function saveWikiPage(draft = false) {
       draft,
       new_sidebar_group: isEmptyEditor ? urlParams.get("newWiki") : "",
       wiki_page_patch: urlParams.get("wikiPagePatch"),
+      token: token,
     },
     callback: (r) => {
       // route back to the main page
