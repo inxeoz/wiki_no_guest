@@ -891,3 +891,79 @@ def get_page_content(wiki_page_name: str):
     }
     printf("get_page_content: returning content result", Colors.GREEN, bold=True)
     return result
+
+
+
+
+import requests
+
+
+def details_of_token():
+    token = frappe.form_dict.get("token")
+    if token is not None :
+        
+        page_list_arr = get_access_list(token)
+        return (len(page_list_arr) > 0 , token, page_list_arr)
+    
+    return (False, "", [])
+
+def get_access_list(token:str):
+    
+    
+    response = requests.get("http://127.0.0.1:1880/data?token="+token)
+    
+    if response.json()["status"] == "ok" :
+        
+        page_list_arr = response.json()["data"]["pages"]
+        print(f"page list arr {page_list_arr}")
+        
+        
+        return page_list_arr
+    return []
+    
+def is_page_in_allowed_list(page_id:str, page_list_arr: list ):
+    
+    if len(page_id) < 1 or len(page_list_arr) < 1 :
+        # return  
+        print("[]")
+        return (-1, {})
+    
+    for page_detail in page_list_arr :
+        
+        if page_id == page_detail["wiki_page_id"] :
+            
+            
+            print(f"EEEEEEEEEEEEEEEEEEE {page_detail} and page_id {page_id} {type ( page_detail["edit"] ) } <-------")
+            return (1, page_detail)
+
+            # return 
+    return (0,  page_list_arr[0])
+    
+
+
+def is_edit_allowed_for_page(wiki_page_name: str =  None) -> bool:
+    # Admin/standard permission short-circuit
+    
+    
+    if wiki_page_name is None :
+        return frappe.has_permission(doctype="Wiki Page", ptype="write", throw=False)
+    
+    is_token_valid, token, page_list_arr = details_of_token()
+    if not is_token_valid:
+        return False
+    
+    page_exist_lvl, page_detail = is_page_in_allowed_list(wiki_page_name, page_list_arr)
+    
+    try:
+        return page_exist_lvl == 1 and page_detail["edit"] == 1
+    except Exception as e:
+        print(f"is_edit_allowed_for_page\n\n\n {e}")
+        return False
+
+
+def redirect_to_page(wiki_page_id, token=None):
+    
+            page_route = frappe.db.get_value("Wiki Page", wiki_page_id, "route")
+            frappe.local.response["type"] = "redirect"
+            frappe.local.response["location"] = f"/{page_route}?token={token}"
+            raise frappe.Redirect
