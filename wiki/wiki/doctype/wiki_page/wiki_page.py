@@ -1059,6 +1059,7 @@ def redirect_to_default_page_or_error(page_list_arr, token:str):
             return
     
     frappe.msgprint("token doesnot have any link to visible page")
+    # return
     frappe.throw(_("token doesnot have any link to visible page"))
         
     

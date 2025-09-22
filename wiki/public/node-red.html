@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Wiki Space Manager — Simple</title>
+  <title>Wiki Space Manager</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body { background:#f5f7fb; }
@@ -48,7 +48,7 @@
         <thead>
           <tr>
             <th style="width:4%">#</th>
-            <th style="width:30%">Wiki Page ID</th>
+            <th style="width:30%">Wiki Page ID {Space}</th>
             <th style="width:46%">Route</th>
             <th style="width:20%">Edit</th>
           </tr>
@@ -63,10 +63,9 @@
 
 <script>
 const frappeBase = "http://127.0.0.1:8003";
-const spacesAPI = `${frappeBase}/api/resource/Wiki%20Space`;
+const spacesAPI = `${frappeBase}/api/resource/Wiki%20Space?fields=["space_name","name","route"]`;
 const pageListAPI = `${frappeBase}/api/method/wiki.wiki.doctype.wiki_space.wiki_space.page_list_of_space`;
 const wikiRouteAPI = `${frappeBase}/api/method/wiki.wiki.doctype.wiki_page.wiki_page.wiki_route`;
-
 const nodeRedSaveAPI = "http://127.0.0.1:1880/data";
 
 const authHeaders = {
@@ -76,6 +75,7 @@ const authHeaders = {
 };
 
 let currentPages = [];
+let currentSpaceName = "";
 
 function setStatus(text, isError=false) {
   const s = document.getElementById('status');
@@ -95,7 +95,8 @@ async function loadSpaces(){
       json.data.forEach(sp => {
         const opt = document.createElement('option');
         opt.value = sp.name;
-        opt.textContent = sp.name;
+        opt.textContent = `${sp.space_name} (${sp.route}) (${sp.name})`;
+        opt.dataset.spaceName = sp.space_name;
         sel.appendChild(opt);
       });
       setStatus('spaces loaded');
@@ -111,8 +112,10 @@ async function loadSpaces(){
 
 async function loadPages(){
   const sel = document.getElementById('spaceSelect');
-  const space = sel.value;
-  if (!space) { setStatus('select a space', true); return; }
+  const spaceId = sel.value;
+  const spaceName = sel.options[sel.selectedIndex]?.dataset.spaceName || "";
+  if (!spaceId) { setStatus('select a space', true); return; }
+  currentSpaceName = spaceName;
   setStatus('loading pages...');
   const table = document.getElementById('pagesTable');
   table.innerHTML = '<tr><td colspan="4" class="text-center muted py-4">Loading...</td></tr>';
@@ -121,7 +124,7 @@ async function loadPages(){
     const res = await fetch(pageListAPI, {
       method: 'POST',
       headers: authHeaders,
-      body: JSON.stringify({ wiki_space_id: space })
+      body: JSON.stringify({ wiki_space_id: spaceId })
     });
     const json = await res.json();
 
@@ -155,7 +158,7 @@ function renderTable() {
 
     tr.innerHTML = `
       <td>${idx+1}</td>
-      <td class="fw-semibold">${escapeHtml(p.wiki_page_id)}</td>
+      <td class="fw-semibold">${escapeHtml(p.wiki_page_id)} {${escapeHtml(currentSpaceName)}}</td>
       <td class="text-muted">${escapeHtml(p.route)}</td>
       <td>
         <div class="btn-group btn-group-sm">
@@ -207,8 +210,7 @@ async function redirectToRoute() {
   const token = document.getElementById('saveToken').value.trim();
   if (!token) { setStatus('enter token', true); return; }
   if (!currentPages.length) { setStatus('no pages', true); return; }
-
-  const firstPage = currentPages[0]; // you can change logic (first, or selected)
+  const firstPage = currentPages[0];
   try {
     const res = await fetch(wikiRouteAPI, {
       method: 'POST',
