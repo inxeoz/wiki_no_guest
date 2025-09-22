@@ -490,6 +490,12 @@ class WikiPage(WebsiteGenerator):
             
             if page_allowed_level == 0 :
                 continue
+            
+            
+            if "?" in wiki_page.route :
+                wiki_page.route = wiki_page.route + f"&token={token}"
+            else:
+                wiki_page.route = wiki_page.route + f"?token={token}"
 
             if sidebar_item.parent_label not in sidebar:
                 sidebar[sidebar_item.parent_label] = [
