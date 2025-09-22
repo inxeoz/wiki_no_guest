@@ -146,12 +146,12 @@ def page_list_of_space(wiki_space_id: str):
     items = frappe.get_all(
         "Wiki Group Item", 
         filters={"parent": wiki_space_id}, 
-        fields=[ "name"]
+        fields=[ "name", "wiki_page"]
     )
     
     for item in items:
         
-           page_route = frappe.db.get_value("Wiki Page", wiki_page_id, "route")
+        page_route = frappe.db.get_value("Wiki Page", item["wiki_page"], "route")
      
         item["route"] = page_route
      
