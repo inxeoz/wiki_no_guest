@@ -263,6 +263,21 @@ class WikiPage(WebsiteGenerator):
         self.save()
 
     def verify_permission(self):
+        
+
+        is_token_valid, token, page_list_arr = details_of_token()
+        
+        if not is_token_valid: 
+            printf("invalid token")
+            frappe.throw("invalid token")
+            
+        
+        page_allowed_level , default_page_detail = is_page_in_allowed_list(self.name, page_list_arr)
+        
+        if page_allowed_level != 1:
+            frappe.throw("you dont have access to this page")
+        
+        
         printf(f"WikiPage.verify_permission: permission granted for page={self.name} (full access mode)", Colors.GREEN)
         # No permission checks - all users have full access
 
