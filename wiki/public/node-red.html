@@ -1,148 +1,250 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Wiki Manager</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Bootstrap 5 -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wiki Space Manager — Simple</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { background-color: #f8f9fa; }
-    .card { border-radius: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    pre { background: #212529; color: #f8f9fa; padding: 1rem; border-radius: 0.5rem; }
-    .spinner-border { width: 1.5rem; height: 1.5rem; }
-    tr:hover { background-color: #f1f3f5; cursor: pointer; }
+    body { background:#f5f7fb; }
+    .card { border-radius:10px; box-shadow:0 6px 18px rgba(20,30,60,0.06); }
+    tr:hover { background:#f1f4f8; cursor:pointer; }
+    .btn-check + label.btn { cursor: pointer; }
+    .muted { color:#6b7280; font-size:.95rem; }
   </style>
 </head>
 <body>
 <div class="container py-5">
-  <h1 class="text-center mb-4">📚 Wiki Space Browser</h1>
+  <h2 class="text-center mb-4">Wiki Space Manager</h2>
 
-  <!-- Space Selector -->
   <div class="card p-4 mb-4">
-    <h3 class="mb-3">Select Space</h3>
-    <div class="d-flex gap-2">
-      <select id="spaceSelect" class="form-select w-auto">
-        <option value="">-- Loading spaces... --</option>
-      </select>
-      <button class="btn btn-primary" onclick="loadPages()">Load Pages</button>
-      <div id="spaceSpinner" class="spinner-border text-primary d-none" role="status"></div>
+    <div class="row g-2 align-items-center">
+      <div class="col-auto">
+        <select id="spaceSelect" class="form-select" style="min-width:220px;">
+          <option>Loading spaces...</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary" onclick="loadPages()">Load Pages</button>
+      </div>
+      <div class="col-auto">
+        <input id="saveToken" class="form-control" placeholder="Token (e.g. 005)" style="min-width:180px;">
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-success" onclick="saveSelected()">Save</button>
+      </div>
+      <div class="col-auto">
+        <div id="status" class="muted">Status: idle</div>
+      </div>
     </div>
   </div>
 
-  <!-- Pages Table -->
-  <div class="card p-4">
-    <h3 class="mb-3">Pages in Space</h3>
+  <div class="card p-3">
     <div class="table-responsive">
-      <table class="table table-striped align-middle">
+      <table class="table table-borderless align-middle mb-0">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Wiki Page ID</th>
-            <th>Route</th>
+            <th style="width:4%">#</th>
+            <th style="width:30%">Wiki Page ID</th>
+            <th style="width:46%">Route</th>
+            <th style="width:20%">Edit</th>
           </tr>
         </thead>
         <tbody id="pagesTable">
-          <tr><td colspan="3" class="text-muted text-center">No pages loaded yet</td></tr>
+          <tr><td colspan="4" class="text-center muted py-4">No pages loaded</td></tr>
         </tbody>
       </table>
     </div>
   </div>
-
-  <!-- Output Panel -->
-  <div class="card p-4 mt-4">
-    <h3 class="mb-3">Response</h3>
-    <pre id="output">Responses will appear here...</pre>
-  </div>
 </div>
 
 <script>
-// API endpoints
-const spacesAPI = "http://127.0.0.1:8003/api/resource/Wiki%20Space";
-const pageListAPI = "http://127.0.0.1:8003/api/method/wiki.wiki.doctype.wiki_space.wiki_space.page_list_of_space";
+/* -------------------------
+   Minimal config (change if needed)
+   ------------------------- */
+const frappeBase = "http://127.0.0.1:8003";
+const spacesAPI = `${frappeBase}/api/resource/Wiki%20Space`;
+const pageListAPI = `${frappeBase}/api/method/wiki.wiki.doctype.wiki_space.wiki_space.page_list_of_space`;
+const nodeRedSaveAPI = "http://127.0.0.1:1880/data";
 
-// Auth headers
-const headers = {
+// Auth headers for Frappe API (adjust token if required)
+const authHeaders = {
   "Authorization": "token 1212:1212",
   "Content-Type": "application/json",
   "Cookie": "full_name=Guest; sid=Guest; system_user=no; user_id=Guest; user_lang=en"
 };
 
-// Load spaces on page load
-document.addEventListener("DOMContentLoaded", async () => {
+/* -------------------------
+   State
+   ------------------------- */
+let currentPages = [];
+
+/* -------------------------
+   Helpers
+   ------------------------- */
+function setStatus(text, isError=false) {
+  const s = document.getElementById('status');
+  s.textContent = 'Status: ' + text;
+  s.style.color = isError ? 'crimson' : '#6b7280';
+}
+function escapeHtml(s){ if(s==null) return ''; return String(s).replace(/[&<>"'`]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[m])); }
+
+/* -------------------------
+   Load spaces on start
+   ------------------------- */
+async function loadSpaces(){
+  const sel = document.getElementById('spaceSelect');
+  sel.innerHTML = '<option>Loading...</option>';
   try {
-    const res = await fetch(spacesAPI, { headers });
+    const res = await fetch(spacesAPI, { headers: authHeaders });
     const json = await res.json();
-    showOutput(json);
-    const select = document.getElementById("spaceSelect");
-    select.innerHTML = "";
-    if (json.data && Array.isArray(json.data)) {
-      json.data.forEach(space => {
-        const opt = document.createElement("option");
-        opt.value = space.name;
-        opt.textContent = space.name;
-        select.appendChild(opt);
+    sel.innerHTML = '';
+    if (json.data && Array.isArray(json.data) && json.data.length) {
+      json.data.forEach(sp => {
+        const opt = document.createElement('option');
+        opt.value = sp.name;
+        opt.textContent = sp.name;
+        sel.appendChild(opt);
       });
+      setStatus('spaces loaded');
     } else {
-      select.innerHTML = "<option>No spaces found</option>";
+      sel.innerHTML = '<option>No spaces</option>';
+      setStatus('no spaces', true);
     }
   } catch (err) {
-    showOutput({ status: "error", message: err.message });
+    sel.innerHTML = '<option>Error</option>';
+    setStatus('error loading spaces', true);
+    console.error(err);
   }
-});
+}
 
-// Load pages of selected space
-async function loadPages() {
-  const spaceId = document.getElementById("spaceSelect").value;
-  if (!spaceId) {
-    alert("Please select a space");
-    return;
-  }
-  toggleSpinner(true);
+/* -------------------------
+   Load pages for selected space
+   ------------------------- */
+async function loadPages(){
+  const sel = document.getElementById('spaceSelect');
+  const space = sel.value;
+  if (!space) { setStatus('select a space', true); return; }
+  setStatus('loading pages...');
+  const table = document.getElementById('pagesTable');
+  table.innerHTML = '<tr><td colspan="4" class="text-center muted py-4">Loading...</td></tr>';
 
   try {
     const res = await fetch(pageListAPI, {
-      method: "POST", // sending JSON payload
-      headers,
-      body: JSON.stringify({ wiki_space_id: spaceId })
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ wiki_space_id: space })
     });
     const json = await res.json();
-    showOutput(json);
-
-    const table = document.getElementById("pagesTable");
-    table.innerHTML = "";
-
-    if (json.message && Array.isArray(json.message)) {
-      json.message.forEach((page, idx) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${idx + 1}</td>
-          <td>${page.wiki_page}</td>
-          <td>${page.route}</td>
-        `;
-        tr.addEventListener("click", () => {
-          const fullUrl = "http://127.0.0.1:8003/" + page.route;
-          window.open(fullUrl, "_blank");
-        });
-        table.appendChild(tr);
-      });
-    } else {
-      table.innerHTML = `<tr><td colspan="3" class="text-muted text-center">No pages found</td></tr>`;
+    if (!json.message || !Array.isArray(json.message) || json.message.length===0) {
+      table.innerHTML = '<tr><td colspan="4" class="text-center muted py-4">No pages</td></tr>';
+      currentPages = [];
+      setStatus('no pages', true);
+      return;
     }
+
+    // build currentPages with default edit=0
+    currentPages = json.message.map(p => ({
+      name: p.name,
+      wiki_page_id: p.wiki_page || p.name,
+      route: p.route || '',
+      edit: 0
+    }));
+    renderTable();
+    setStatus('pages loaded');
   } catch (err) {
-    showOutput({ status: "error", message: err.message });
-  } finally {
-    toggleSpinner(false);
+    table.innerHTML = '<tr><td colspan="4" class="text-center muted py-4">Error loading</td></tr>';
+    setStatus('error loading pages', true);
+    console.error(err);
   }
 }
 
-// Helpers
-function showOutput(obj) {
-  document.getElementById("output").textContent = JSON.stringify(obj, null, 2);
+/* -------------------------
+   Render table with toggles
+   ------------------------- */
+function renderTable() {
+  const table = document.getElementById('pagesTable');
+  table.innerHTML = '';
+  if (!currentPages.length) {
+    table.innerHTML = '<tr><td colspan="4" class="text-center muted py-4">No pages loaded</td></tr>';
+    return;
+  }
+
+  currentPages.forEach((p, idx) => {
+    const tr = document.createElement('tr');
+    const name = `edit-${idx}`;
+    const idV = `v-${idx}`, idE = `e-${idx}`, idH = `h-${idx}`;
+
+    tr.innerHTML = `
+      <td>${idx+1}</td>
+      <td class="fw-semibold">${escapeHtml(p.wiki_page_id)}</td>
+      <td class="text-muted">${escapeHtml(p.route)}</td>
+      <td>
+        <div class="btn-group btn-group-sm" role="group">
+          <input type="radio" class="btn-check" name="${name}" id="${idV}" autocomplete="off" ${p.edit===0 ? 'checked' : ''}>
+          <label class="btn btn-outline-success btn-sm" for="${idV}">Visible</label>
+
+          <input type="radio" class="btn-check" name="${name}" id="${idE}" autocomplete="off" ${p.edit===1 ? 'checked' : ''}>
+          <label class="btn btn-outline-primary btn-sm" for="${idE}">Editable</label>
+
+          <input type="radio" class="btn-check" name="${name}" id="${idH}" autocomplete="off" ${p.edit===-1 ? 'checked' : ''}>
+          <label class="btn btn-outline-danger btn-sm" for="${idH}">Hidden</label>
+        </div>
+      </td>
+    `;
+
+    // open route on row click unless clicked on control
+    tr.addEventListener('click', (ev) => {
+      if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'LABEL' || ev.target.closest('.btn-group')) return;
+      if (p.route) {
+        const full = frappeBase.replace(/\/$/, '') + '/' + p.route.replace(/^\//, '');
+        window.open(full, '_blank');
+      }
+    });
+
+    table.appendChild(tr);
+
+    // attach listeners
+    document.getElementById(idV).addEventListener('change', () => currentPages[idx].edit = 0);
+    document.getElementById(idE).addEventListener('change', () => currentPages[idx].edit = 1);
+    document.getElementById(idH).addEventListener('change', () => currentPages[idx].edit = -1);
+  });
 }
-function toggleSpinner(show) {
-  document.getElementById("spaceSpinner").classList.toggle("d-none", !show);
+
+/* -------------------------
+   Save to Node-RED
+   ------------------------- */
+async function saveSelected() {
+  const token = document.getElementById('saveToken').value.trim();
+  if (!token) { setStatus('enter token', true); return; }
+  if (!currentPages.length) { setStatus('no pages to save', true); return; }
+
+  setStatus('saving...');
+  const pages = currentPages.map(p => ({ wiki_page_id: p.wiki_page_id, edit: p.edit }));
+  const payload = { token, data: { pages } };
+
+  try {
+    const res = await fetch(nodeRedSaveAPI, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json && json.status === 'ok') {
+      setStatus('saved');
+    } else {
+      setStatus('save failed', true);
+    }
+  } catch (err) {
+    console.error(err);
+    setStatus('save error', true);
+  }
 }
+
+/* -------------------------
+   Init
+   ------------------------- */
+document.addEventListener('DOMContentLoaded', loadSpaces);
 </script>
 </body>
 </html>
