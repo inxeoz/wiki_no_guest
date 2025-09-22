@@ -894,7 +894,7 @@ def get_markdown_content(wikiPageName, wikiPagePatch):
 
 
 @frappe.whitelist(allow_guest=True)
-def get_page_content(wiki_page_name: str):
+def get_page_content(wiki_page_name: str, token=None):
     printf(f"get_page_content: called with wiki_page_name={wiki_page_name} (full access mode)", Colors.YELLOW, bold=True)
 
     printf("get_page_content: starting content retrieval (full access mode)", Colors.GREEN)
@@ -949,6 +949,25 @@ def get_page_content(wiki_page_name: str):
         frappe.cache.hset(html_cache_key, "toc_html", toc_html)
         frappe.cache.hset(html_cache_key, "next_page", next_page)
         frappe.cache.hset(html_cache_key, "prev_page", prev_page)
+        
+        
+    
+    
+    printf(f"token for prev nex {token}", Colors.YELLOW)
+    # if token is None:
+    #     token = secrets.token_urlsafe(16)
+        
+    # if "?" in next_page.route:
+    #     next_page.route = f"{next_page.route}&token={token}"
+    # else:
+    #     next_page.route = f"{next_page.route}?token={token}"
+        
+        
+        
+    # if "?" in prev_page.route:
+    #     prev_page.route = f"{prev_page.route}&token={token}"
+    # else:
+    #     prev_page.route = f"{prev_page.route}?token={token}"
 
     result = {
         "title": page_title,

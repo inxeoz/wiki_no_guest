@@ -309,9 +309,15 @@ function loadWikiPage(url, pageElement, replaceState = false) {
   // Save wiki page name on input used by editor.js and render_wiki.js
   $('[name="wiki-page-name"]').val(wikiPageName);
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get("token");
+
+
+
+
   frappe.call({
     method: "wiki.wiki.doctype.wiki_page.wiki_page.get_page_content",
-    args: { wiki_page_name: pageName },
+    args: { wiki_page_name: pageName , token : token},
     callback: (r) => {
       if (r.message) {
         $(".wiki-content").html(r.message.content);
