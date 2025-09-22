@@ -488,7 +488,7 @@ class WikiPage(WebsiteGenerator):
             
             page_allowed_level , default_page_detail = is_page_in_allowed_list(wiki_page.name, page_list_arr)
             
-            if page_allowed_level == -1 :
+            if page_allowed_level == 0 :
                 continue
 
             if sidebar_item.parent_label not in sidebar:
