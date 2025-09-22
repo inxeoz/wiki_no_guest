@@ -100,6 +100,9 @@ function saveWikiPage(draft = false) {
     callback: (r) => {
       // route back to the main page
       window.location.href = "/" + r.message.route;
+
+      console.log("route -->", r.message.route)
+      
     },
     freeze: true,
   });
