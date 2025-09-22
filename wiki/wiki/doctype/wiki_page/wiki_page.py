@@ -1033,9 +1033,19 @@ def is_edit_allowed_for_page(wiki_page_name: str =  None, token:str = None) -> b
         return False
 
 
-def redirect_to_page(wiki_page_id, token=None):
+
+def redirect_to_page(wiki_page_id, token:str):
     
             page_route = frappe.db.get_value("Wiki Page", wiki_page_id, "route")
             frappe.local.response["type"] = "redirect"
             frappe.local.response["location"] = f"/{page_route}?token={token}"
             raise frappe.Redirect
+
+@frappe.whitelist(allow_guest=True)
+def wiki_route(wiki_page_id, token:str):
+    page_route = frappe.db.get_value("Wiki Page", wiki_page_id, "route")
+    
+    if token is not None:
+        page_route  =  f"/{page_route}?token={token}"
+        
+    return page_route

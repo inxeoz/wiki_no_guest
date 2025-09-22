@@ -139,3 +139,6 @@ def update_sidebar(sidebar_items):
 
 	for key in frappe.cache().hgetall("wiki_sidebar").keys():
 		frappe.cache().hdel("wiki_sidebar", key)
+
+
+# def page_list_of_space(wiki_space)
