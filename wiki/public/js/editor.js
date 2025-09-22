@@ -98,7 +98,7 @@ function saveWikiPage(draft = false) {
       draft,
       new_sidebar_group: isEmptyEditor ? urlParams.get("newWiki") : "",
       wiki_page_patch: urlParams.get("wikiPagePatch"),
-      token: token,
+      token: token
     },
     callback: (r) => {
       // route back to the main page

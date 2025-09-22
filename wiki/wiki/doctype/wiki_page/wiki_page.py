@@ -659,6 +659,27 @@ def update(
     printf(f"update: called with name={name}, title={title}, new={new}, draft={draft} (full access mode) token={token}", Colors.YELLOW, bold=True)
     
     try:
+        
+        
+    # try:
+        if token is None:
+            frappe.throw("token is not provided")
+            
+        is_edit_allowed = is_edit_allowed_for_page(name, token)
+        
+        printf(f"\n\n\n\n\if allowed {is_edit_allowed}\n\n\n\n")
+        
+        if not is_edit_allowed:
+            
+            frappe.msgprint("you are not allowed")
+            frappe.throw(_("You are not allowed to edit this page"))
+    # except Exception as e:
+    #     printf(f"update: exception occurred - {str(e)}", Colors.RED, bold=True)
+        
+        
+        
+                
+        
         printf("update: starting update process (full access mode)", Colors.GREEN)
         context = {"route": name}
         context = frappe._dict(context)
@@ -945,8 +966,12 @@ def get_page_content(wiki_page_name: str):
 import requests
 
 
-def details_of_token():
-    token = frappe.form_dict.get("token")
+def details_of_token(token:str=None):
+    
+    if token is None:
+         token = frappe.form_dict.get("token")
+         
+    
     if token is not None :
         
         page_list_arr = get_access_list(token)
@@ -988,14 +1013,14 @@ def is_page_in_allowed_list(page_id:str, page_list_arr: list ):
     
 
 
-def is_edit_allowed_for_page(wiki_page_name: str =  None) -> bool:
+def is_edit_allowed_for_page(wiki_page_name: str =  None, token:str = None) -> bool:
     # Admin/standard permission short-circuit
     
     
     if wiki_page_name is None :
         return frappe.has_permission(doctype="Wiki Page", ptype="write", throw=False)
     
-    is_token_valid, token, page_list_arr = details_of_token()
+    is_token_valid, token, page_list_arr = details_of_token(token)
     if not is_token_valid:
         return False
     
