@@ -16,3 +16,4 @@ cypress/videos
 __pycache__/
 .gitub/workflows
 wiki/fixtures
+wiki/fixtures
