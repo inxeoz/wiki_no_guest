@@ -474,12 +474,22 @@ class WikiPage(WebsiteGenerator):
     def get_sidebar_items(self):
         wiki_sidebar = frappe.get_doc("Wiki Space", {"route": self.get_space_route()}).wiki_sidebars
         sidebar = {}
+        
+        is_token_valid, token, page_list_arr = details_of_token()
+        
+        if not is_token_valid:
+            frappe.throw("cant be build sidebar for invalid token")
 
         for sidebar_item in wiki_sidebar:
             if sidebar_item.hide_on_sidebar:
                 continue
 
             wiki_page = frappe.get_cached_doc("Wiki Page", sidebar_item.wiki_page)
+            
+            page_allowed_level , default_page_detail = is_page_in_allowed_list(wiki_page.name, page_list_arr)
+            
+            if page_allowed_level == -1 :
+                continue
 
             if sidebar_item.parent_label not in sidebar:
                 sidebar[sidebar_item.parent_label] = [
