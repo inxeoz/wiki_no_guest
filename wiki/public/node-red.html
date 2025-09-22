@@ -151,11 +151,34 @@ async function loadPages(){
 function renderTable() {
   const table = document.getElementById('pagesTable');
   table.innerHTML = '';
+
+  // === control row ===
+  const ctrl = document.createElement('tr');
+  ctrl.innerHTML = `
+    <td>*</td>
+    <td class="fw-bold text-primary">Bulk Toggle</td>
+    <td class="text-muted">Apply to all pages</td>
+    <td>
+      <div class="btn-group btn-group-sm" role="group">
+        <button class="btn btn-outline-success">All Visible</button>
+        <button class="btn btn-outline-primary">All Editable</button>
+        <button class="btn btn-outline-danger">All Hidden</button>
+      </div>
+    </td>
+  `;
+  table.appendChild(ctrl);
+
+  // hook up buttons
+  const btns = ctrl.querySelectorAll('button');
+  btns[0].addEventListener('click', () => { currentPages.forEach(p => p.edit=0); renderTable(); });
+  btns[1].addEventListener('click', () => { currentPages.forEach(p => p.edit=1); renderTable(); });
+  btns[2].addEventListener('click', () => { currentPages.forEach(p => p.edit=-1); renderTable(); });
+
+  // === normal page rows ===
   currentPages.forEach((p, idx) => {
     const tr = document.createElement('tr');
     const name = `edit-${idx}`;
     const idV = `v-${idx}`, idE = `e-${idx}`, idH = `h-${idx}`;
-
     tr.innerHTML = `
       <td>${idx+1}</td>
       <td class="fw-semibold">${escapeHtml(p.wiki_page_id)} {${escapeHtml(currentSpaceName)}}</td>
@@ -171,21 +194,13 @@ function renderTable() {
         </div>
       </td>
     `;
-
-    tr.addEventListener('click', (ev) => {
-      if (ev.target.closest('.btn-group')) return;
-      if (p.route) {
-        const full = frappeBase.replace(/\/$/,'') + '/' + p.route.replace(/^\//,'');
-        window.open(full, '_blank');
-      }
-    });
-
     table.appendChild(tr);
     document.getElementById(idV).addEventListener('change',()=>currentPages[idx].edit=0);
     document.getElementById(idE).addEventListener('change',()=>currentPages[idx].edit=1);
     document.getElementById(idH).addEventListener('change',()=>currentPages[idx].edit=-1);
   });
 }
+
 
 async function saveSelected() {
   const token = document.getElementById('saveToken').value.trim();
