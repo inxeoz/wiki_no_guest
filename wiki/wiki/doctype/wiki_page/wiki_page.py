@@ -647,6 +647,8 @@ def update(
     new_sidebar_group="",
     new_sidebar_items="",
     draft=False,
+    
+    token=None,
 ):
     printf(f"update: called with name={name}, title={title}, new={new}, draft={draft} (full access mode)", Colors.YELLOW, bold=True)
     
@@ -733,6 +735,15 @@ def update(
             printf(f"update: routing to existing wiki page {out.route}", Colors.CYAN)
 
         printf(f"update: returning result={out}", Colors.GREEN, bold=True)
+        
+        if token is None:
+            token = secrets.token_urlsafe(16)
+            
+        if "?" in out.route:
+            out.route = f"{out.route}&token={token}"
+        else:
+            out.route = f"{out.route}?token={token}"
+        
         return out
     
     except Exception as e:
